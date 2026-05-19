@@ -7,7 +7,10 @@ app.use(express.json());
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,POST,PUT,DELETE");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Requested-With");
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, X-Requested-With",
+  );
   if (req.method === "OPTIONS") return res.status(200).end();
   next();
 });
@@ -18,7 +21,8 @@ app.get("/", (req, res) => {
 
 app.post("/api/proxy", async (req, res) => {
   const { url } = req.query;
-  if (!url) return res.status(400).json({ error: "Missing 'url' query parameter" });
+  if (!url)
+    return res.status(400).json({ error: "Missing 'url' query parameter" });
 
   try {
     console.log("[PROXY] Forwarding to:", url);
