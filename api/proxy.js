@@ -1,52 +1,38 @@
-// Vercel Serverless Function (Node.js)
-// Proxies fetch requests to bypass firewalls
-export default async function handler(req, res) {
-  // 1. Set CORS headers to allow requests from anywhere (like your trading bot)
-  res.setHeader("Access-Control-Allow-Credentials", true);
+const express = require("express");
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(express.json());
+
+app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET,OPTIONS,PATCH,DELETE,POST,PUT",
-  );
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version",
-  );
+  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,POST,PUT,DELETE");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Requested-With");
+  if (req.method === "OPTIONS") return res.status(200).end();
+  next();
+});
 
-  // 2. Handle the "Preflight" OPTIONS request (standard for cross-origin requests)
-  if (req.method === "OPTIONS") {
-    res.status(200).end();
-    return;
-  }
+app.get("/", (req, res) => {
+  res.json({ status: "Telegram proxy is running" });
+});
 
-  // 3. Get the target URL (Telegram API) from the query string
-  // The C# bot sends: ?url=https://api.telegram.org/bot...
+app.post("/api/proxy", async (req, res) => {
   const { url } = req.query;
-
-  if (!url) {
-    return res.status(400).json({
-      error:
-        "Missing 'url' query parameter. Usage: /api/proxy?url=YOUR_TARGET_URL",
-    });
-  }
+  if (!url) return res.status(400).json({ error: "Missing 'url' query parameter" });
 
   try {
-    console.log("[TELEGRAM PROXY] Forwarding request to:", url);
-    // 4. Forward the request to Telegram
+    console.log("[PROXY] Forwarding to:", url);
     const response = await fetch(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      // Pass the exact JSON body from the bot (chat_id, text, etc.)
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(req.body),
     });
-
-    // 5. Return Telegram's response back to the bot
     const data = await response.json();
-    return res.status(response.status).json(data);
+    res.status(response.status).json(data);
   } catch (error) {
-    console.error("[TELEGRAM PROXY] Error forwarding request:", error);
-    return res.status(500).json({ error: error.message });
+    console.error("[PROXY] Error:", error.message);
+    res.status(500).json({ error: error.message });
   }
-}
+});
+
+app.listen(PORT, () => console.log(`Proxy running on port ${PORT}`));
